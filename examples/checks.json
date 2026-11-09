@@ -1,0 +1,4 @@
+[
+  {"name": "local-ok", "url": "http://127.0.0.1:8001/ok", "expect_status": 200, "max_latency_ms": 500},
+  {"name": "local-flaky", "url": "http://127.0.0.1:8001/flaky", "retries": 2, "backoff_s": 0.05}
+]

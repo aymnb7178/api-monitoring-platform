@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>apimon - {{ r.project }}</title>
+<style>
+:root{--bg:#f8fafc;--card:#fff;--fg:#0f172a;--mut:#64748b;--line:#e2e8f0;--bad:#dc2626;--ok:#15803d;--warn:#d97706}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#111a2e;--fg:#e5e7eb;--mut:#94a3b8;--line:#243049}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0}h2{font-size:15px;margin:0 0 8px}
+.sub{color:var(--mut);margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.tile,.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card{margin-bottom:12px;overflow-x:auto}
+.tile b{display:block;font-size:20px}.tile span{color:var(--mut);font-size:12px}
+img{max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.bad{color:var(--bad);font-weight:600}.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}
+.note{color:var(--mut);font-size:12px}
+</style></head><body><main>
+<h1>apimon dashboard: {{ r.project }}</h1>
+<div class="sub">window {{ r.window_s|round|int }}s, bucket {{ r.bucket_s|round(1) }}s, evaluated at {{ now_iso }}. Data source: {{ source_note }}</div>
+{% set s = r.summary %}
+<div class="tiles">
+<div class="tile"><b>{{ s.requests }}</b><span>requests</span></div>
+<div class="tile"><b>{{ s.throughput_rps }}</b><span>req/s</span></div>
+<div class="tile"><b>{{ "%.2f"|format((s.error_rate or 0)*100) }}%</b><span>error rate</span></div>
+<div class="tile"><b>{{ s.p50_ms }} / {{ s.p95_ms }} / {{ s.p99_ms }}</b><span>p50 / p95 / p99 ms</span></div>
+<div class="tile"><b>{{ s.apdex }}</b><span>Apdex (T={{ r.apdex_t_ms|round|int }} ms)</span></div>
+<div class="tile"><b>{{ r.slo.budget_remaining }}</b><span>error budget left (1.0 = untouched)</span></div>
+</div>
+<div class="card"><h2>Latency percentiles</h2><img alt="latency percentiles" src="data:image/png;base64,{{ img.latency }}"></div>
+<div class="card"><h2>Error rate</h2><img alt="error rate" src="data:image/png;base64,{{ img.errors }}"></div>
+<div class="card"><h2>Endpoints (ranked by p95)</h2>
+<table><tr><th>endpoint</th><th>reqs</th><th>err %</th><th>p50</th><th>p95</th><th>p99</th><th>apdex</th><th>time share</th><th></th></tr>
+{% for e in r.endpoints %}<tr><td>{{ e.method }} {{ e.route }}</td><td class="n">{{ e.requests }}</td>
+<td class="n">{{ "%.1f"|format((e.error_rate or 0)*100) }}</td><td class="n">{{ e.p50_ms }}</td><td class="n">{{ e.p95_ms }}</td>
+<td class="n">{{ e.p99_ms }}</td><td class="n">{{ e.apdex }}</td><td class="n">{{ "%.0f"|format((e.time_share or 0)*100) }}%</td>
+<td>{% if e.slow %}<span class="bad">slow</span>{% endif %}</td></tr>{% endfor %}</table></div>
+{% if img.endpoints %}<div class="card"><img alt="endpoint ranking" src="data:image/png;base64,{{ img.endpoints }}"></div>{% endif %}
+<div class="card"><h2>SLO {{ "%.2f"|format(r.slo.target*100) }}% and burn rate</h2>
+<img alt="burn rate" src="data:image/png;base64,{{ img.burn }}">
+<table><tr><th>policy</th><th>long</th><th>short</th><th>factor</th><th>burn long</th><th>burn short</th><th>state</th></tr>
+{% for p in r.slo.policies %}<tr><td>{{ p.name }} ({{ p.severity }})</td><td class="n">{{ p.long_s }}s</td><td class="n">{{ p.short_s }}s</td>
+<td class="n">{{ p.factor }}</td><td class="n">{{ p.burn_long }}</td><td class="n">{{ p.burn_short }}</td>
+<td>{% if p.firing %}<span class="bad">FIRING</span>{% else %}<span class="ok">ok</span>{% endif %}</td></tr>{% endfor %}</table>
+<p class="note">{{ r.slo.bad }} bad of {{ r.slo.requests }} requests in the window; budget spent {{ r.slo.budget_spent }}.</p></div>
+<div class="card"><h2>Latency anomalies (robust z-score / MAD)</h2>
+{% if r.anomalies %}<table><tr><th>bucket end</th><th>p95 ms</th><th>z</th><th>requests</th></tr>
+{% for a in r.anomalies %}<tr><td>{{ a.t_iso }}</td><td class="n">{{ a.value }}</td><td class="n">{{ a.z }}</td><td class="n">{{ a.count }}</td></tr>{% endfor %}</table>
+{% else %}<span class="note">none detected</span>{% endif %}</div>
+<div class="card"><h2>Alert rules</h2>
+{% if r.alerts %}<table><tr><th>rule</th><th>state</th><th>last value</th></tr>
+{% for a in r.alerts %}<tr><td>{{ a.rule }}</td><td class="{{ 'bad' if a.state=='firing' else ('warn' if a.state=='pending' else 'ok') }}">{{ a.state }}</td><td class="n">{{ a.last_value }}</td></tr>{% endfor %}</table>
+{% else %}<span class="note">no evaluations yet</span>{% endif %}
+{% if r.alert_events %}<p class="note">recent transitions</p><table>{% for e in r.alert_events %}<tr><td>{{ e.message }}</td></tr>{% endfor %}</table>{% endif %}</div>
+<div class="card"><h2>Uptime checks (latest)</h2>
+{% if r.uptime %}<table><tr><th>check</th><th>result</th><th>status</th><th>latency ms</th><th>attempts</th><th>detail</th></tr>
+{% for u in r.uptime %}<tr><td>{{ u.check_name }}</td><td>{% if u.ok %}<span class="ok">up</span>{% else %}<span class="bad">down</span>{% endif %}</td>
+<td class="n">{{ u.status }}</td><td class="n">{{ u.latency_ms }}</td><td class="n">{{ u.attempts }}</td><td>{{ u.error or "" }}</td></tr>{% endfor %}</table>
+{% else %}<span class="note">no checks recorded</span>{% endif %}</div>
+<p class="note">apimon is a learning/portfolio project. Charts are rendered server-side with matplotlib.</p>
+</main></body></html>

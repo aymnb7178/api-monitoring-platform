@@ -1,0 +1,18 @@
+{
+  "sinks": {
+    "console": {"type": "console"},
+    "file": {"type": "file", "path": "build/alerts.jsonl"},
+    "hook": {"type": "webhook-mock", "url": "https://example.invalid/hook"}
+  },
+  "rules": [
+    {"name": "high_p95_latency", "metric": "p95_ms", "op": ">", "threshold": 40, "window_s": 60,
+     "for_evaluations": 2, "cooldown_s": 120, "min_requests": 20, "severity": "warning",
+     "sinks": ["console", "file"]},
+    {"name": "error_burst", "metric": "error_rate", "op": ">", "threshold": 0.05, "window_s": 60,
+     "for_evaluations": 1, "cooldown_s": 120, "min_requests": 20, "severity": "critical",
+     "sinks": ["console", "file", "hook"]},
+    {"name": "slo_burn_fast", "metric": "burn_rate", "op": ">=", "threshold": 4, "window_s": 60,
+     "for_evaluations": 2, "cooldown_s": 120, "min_requests": 20, "severity": "critical",
+     "sinks": ["console", "hook"]}
+  ]
+}

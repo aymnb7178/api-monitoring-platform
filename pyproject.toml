@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apimon"
+version = "0.1.0"
+description = "API monitoring toolkit: WSGI middleware, collector API, uptime checks, SLO analytics, alerts (Flask + sqlite3)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Aymen Al Erwi" }]
+dependencies = ["flask>=3.0", "werkzeug>=3.0", "pandas>=2.0", "numpy>=1.26", "matplotlib>=3.8", "pydantic>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+apimon = "apimon.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["apimon*"]
+
+[tool.setuptools.package-data]
+apimon = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "-q"
