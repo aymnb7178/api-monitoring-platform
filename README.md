@@ -138,10 +138,6 @@ sandbox; the CI matrix for 3.11/3.12 has not been run here.
 
 Key rotation/revocation, retention and rollup tables, latency SLOs, real webhook delivery behind an allow-list, async/FastAPI variant, OpenTelemetry-style trace IDs.
 
-## Built with AI assistance
-
-This project was built with the help of an AI coding assistant (Claude). I reviewed the design and the numbers in this README come from running the code, but you should read and test the code before relying on it.
-
 ## License
 
 MIT, see [LICENSE](LICENSE).
